@@ -1,23 +1,46 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
 import { colors } from "../../global/styles";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import AuthContext from '../../contexts/AuthContext';
+import auth from '@react-native-firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SignInScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const { login } = useContext(AuthContext);
 
-    const handleSignIn = () => {
+    const handleSignIn = async () => {
         if (!email.trim() || !password.trim()) {
             Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email và mật khẩu');
             return;
         }
-        navigation.navigate('RootClientTabs');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            Alert.alert('Lỗi', 'Email không hợp lệ');
+            return;
+        }
 
-        login(email, password);
+        if (password.length < 6) {
+            Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
+            return;
+        }
+
+        try {
+            const response = await auth().signInWithEmailAndPassword(email, password);
+            console.log('User signed in:', response.user.email);
+            await AsyncStorage.setItem('user', JSON.stringify(response.user));
+            
+            handleReload();
+        } catch (e) {
+            Alert.alert('Email hoặc mật khẩu không chính xác');
+        }
+    };
+    const handleReload = () => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'RootClientTabs' }],
+        });
     };
 
     return (

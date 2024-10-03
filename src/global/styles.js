@@ -12,6 +12,7 @@ export const colors = {
     lightgreen: "#1CC62A",
     white: "#FFFFFF",
     lightblue: "#00BFFF",
+    black: "#000000",
 }
 
 export const parameters = {
