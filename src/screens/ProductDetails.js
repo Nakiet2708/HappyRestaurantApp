@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import CheckBox from '@react-native-community/checkbox';
 import { useContext } from 'react';
 import { useCart } from '../contexts/CartContext'; // Ensure correct import
+import CartButton from '../components/CartButton';
 
 const formatPrice = (price) => {
   return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -109,7 +110,8 @@ export default function ProductDetails({ route }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>   
+      <CartButton></CartButton>
       <ScrollView>
         <TouchableOpacity
                   style={styles.backButton}
@@ -122,6 +124,7 @@ export default function ProductDetails({ route }) {
                       color={colors.black}
                   />
         </TouchableOpacity>
+        
         <Image source={{ uri: product.image }} style={styles.image} />
         <View style={styles.infoContainer}>
           <Text style={styles.name}>{product.name}</Text>

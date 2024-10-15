@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import firestore from '@react-native-firebase/firestore';
 import CountDown from 'react-native-countdown-component';
 
+
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function HomeScreen() {
@@ -70,6 +71,7 @@ export default function HomeScreen() {
     return (
         <View style={styles.container}>
             <HomeHeader />
+            
             <ScrollView stickyHeaderIndices={[0]} showsVerticalScrollIndicator={true}>
                 <View style={{ backgroundColor: colors.cardbackground, paddingBottom: 5 }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-evenly", alignItems: "center", marginTop: 5 }}>

@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { colors } from '../../global/styles';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Picker } from '@react-native-picker/picker';
+
 const DetailAccountScreen = ({ navigation }) => {
   const [userData, setUserData] = useState({
     username: '',
@@ -11,6 +15,7 @@ const DetailAccountScreen = ({ navigation }) => {
     email: '',
     gender: '',
     image: '',
+    address: '', 
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -42,6 +47,41 @@ const DetailAccountScreen = ({ navigation }) => {
     }
   };
 
+  const handleChoosePhoto = () => {
+    launchImageLibrary({ mediaType: 'photo' }, async (response) => {
+      if (response.didCancel || response.error) {
+        console.log('User cancelled image picker');
+      } else {
+        const { uri } = response.assets[0];
+        const filename = uri.substring(uri.lastIndexOf('/') + 1);
+        const uploadUri = Platform.OS === 'ios' ? uri.replace('file://', '') : uri;
+
+        // Lưu URL của ảnh hiện tại
+        const currentImageUrl = userData.image;
+
+        // Đặt đường dẫn lưu trữ trong thư mục "Avatar"
+        const storageRef = storage().ref(`Avatar/${filename}`);
+        const task = storageRef.putFile(uploadUri);
+
+        try {
+          await task;
+          const url = await storageRef.getDownloadURL();
+          
+          // Xóa ảnh hiện tại nếu có
+          if (currentImageUrl) {
+            const currentImageRef = storage().refFromURL(currentImageUrl);
+            await currentImageRef.delete();
+          }
+
+          setUserData({ ...userData, image: url });
+          await firestore().collection('USERS').doc(userData.email).update({ image: url });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Image
@@ -51,10 +91,9 @@ const DetailAccountScreen = ({ navigation }) => {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
         <Icon
-                                    name= "arrow-back" 
-                                    
-                                    style={styles.backButton}
-                                />
+            name= "arrow-back"                 
+            style={styles.backButton}
+        />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => {
           if (isEditing) {
@@ -67,38 +106,54 @@ const DetailAccountScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
       <View style={styles.profileContainer}>
-        <Image
-          source={{ uri: userData.image || 'https://vivureviews.com/wp-content/uploads/2022/08/avatar-vo-danh-10.png' }}
-          style={styles.avatar}
-        />
-        </View>
-        <Text style={styles.label}>Tên</Text>
-        <TextInput
-          style={styles.value}
-          value={userData.username}
-          editable={isEditing}
-          onChangeText={(text) => setUserData({ ...userData, username: text })}
-        />
-        <Text style={styles.label}>Số điện thoại</Text>
-        <TextInput
-          style={styles.value}
-          value={userData.phone}
-          editable={isEditing}
-          onChangeText={(text) => setUserData({ ...userData, phone: text })}
-        />
-        <Text style={styles.label}>Nhập địa chỉ email của bạn</Text>
-        <TextInput
-          style={styles.value}
-          value={userData.email}
-          editable={false} // Khóa trường email lại
-        />
+        <TouchableOpacity onPress={isEditing ? handleChoosePhoto : null}>
+          <Image
+            source={{ uri: userData.image || 'https://vivureviews.com/wp-content/uploads/2022/08/avatar-vo-danh-10.png' }}
+            style={styles.avatar}
+          />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.label}>Tên</Text>
+      <TextInput
+        style={styles.value}
+        value={userData.username}
+        editable={isEditing}
+        onChangeText={(text) => setUserData({ ...userData, username: text })}
+      />
+      <Text style={styles.label}>Số điện thoại</Text>
+      <TextInput
+        style={styles.value}
+        value={userData.phone}
+        editable={isEditing}
+        onChangeText={(text) => setUserData({ ...userData, phone: text })}
+      />
+      <Text style={styles.label}>Địa chỉ email của bạn</Text>
+      <TextInput
+        style={styles.value}
+        value={userData.email}
+        editable={false} // Khóa trường email lại
+      />
+      <Text style={styles.label}>Địa chỉ</Text>
+      <TextInput
+        style={styles.value}
+        value={userData.address}
+        editable={isEditing}
+        onChangeText={(text) => setUserData({ ...userData, address: text })}
+      />
+      <View >
         <Text style={styles.label}>Giới tính</Text>
-        <TextInput
-          style={styles.value}
-          value={userData.gender}
-          editable={isEditing}
-          onChangeText={(text) => setUserData({ ...userData, gender: text })}
-        />
+        <Picker
+          selectedValue={userData.gender}
+          onValueChange={(itemValue) => setUserData({ ...userData, gender: itemValue })}
+          enabled={isEditing}
+          style={styles.picker}
+        >
+          <Picker.Item label="Chọn giới tính" value="" />
+          <Picker.Item label="Nam" value="Nam" />
+          <Picker.Item label="Nữ" value="Nữ" />
+          <Picker.Item label="Khác" value="Khác" />
+        </Picker>
+      </View>
       
     </ScrollView>
   );
@@ -171,6 +226,13 @@ const styles = StyleSheet.create({
     width: '100%',
     marginLeft: 20,
     textAlign: 'left',
+  },
+
+  picker: {
+    height: 50,
+    width: '100%',
+    marginLeft: 10,
+    
   },
 });
 

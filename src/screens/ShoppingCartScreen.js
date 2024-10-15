@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView ,Alert} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CheckBox from '@react-native-community/checkbox';
 import { colors } from '../global/styles';
 import { useCart } from '../contexts/CartContext';
+import firestore from '@react-native-firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const formatPrice = (price) => {
   return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const formatDate = (date) => {
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+};
+
+const formatTime = (date) => {
+  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
 };
 
 export default function ShoppingCartScreen() {
@@ -16,18 +26,20 @@ export default function ShoppingCartScreen() {
   const [selectAll, setSelectAll] = useState(false);
 
   useEffect(() => {
-    const selectedItems = cartItems.filter(item => item.selected);
-    const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
     const total = subtotal; // Tổng tiền hiện tại không có giảm giá
 
     setSubtotal(subtotal);
     setTotalPrice(total);
   }, [cartItems]);
 
+
   const toggleSelectAll = () => {
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
-    setCartItems(cartItems.map(item => ({ ...item, selected: newSelectAll })));
+    setCartItems(cartItems.map(item => 
+      item.fromTableDetails ? item : { ...item, selected: newSelectAll }
+    ));
   };
 
   const toggleSelectItem = (id) => {
@@ -44,44 +56,114 @@ export default function ShoppingCartScreen() {
     });
   };
 
+  const deleteItem = (id) => {
+    removeFromCart(id);
+  };
+
   const renderCartItem = ({ item }) => (
     <View style={styles.cartItem}>
-      <CheckBox
-        disabled={false}
-        value={item.selected}
-        onValueChange={() => toggleSelectItem(item.id)}
-        tintColors={{ true: colors.buttons, false: colors.grey3 }}
-      />
+      {!item.fromTableDetails && (
+        <CheckBox
+          disabled={false}
+          value={item.selected}
+          onValueChange={() => toggleSelectItem(item.id)}
+          tintColors={{ true: colors.buttons, false: colors.grey3 }}
+        />
+      )}
       <Image source={{ uri: item.image }} style={styles.productImage} />
       <View style={styles.itemDetails}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.optionText}>{item.options.join(', ')}</Text>
+        <Text style={styles.productName}>
+          {item.name} {item.options.length > 0 && `(${item.options.join(', ')})`}
+        </Text>
+        {item.fromTableDetails && (
+          <Text style={styles.dateTimeText}>
+            {`${item.timeSlot} ${item.date}`} {/* Sử dụng ngày đã định dạng */}
+          </Text>
+        )}
         <View style={styles.priceQuantityContainer}>
           <Text style={styles.priceText}>{formatPrice(item.price)} VNĐ</Text>
-          <Text style={styles.quantityText}>x{item.quantity}</Text>
+          {item.fromTableDetails ? (
+            <TouchableOpacity onPress={() => deleteItem(item.id)}>
+              <Icon name="delete" size={24} color={colors.grey2} />
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.quantityText}>x{item.quantity}</Text>
+          )}
         </View>
       </View>
-      
     </View>
   );
+
+  const tableItems = cartItems.filter(item => item.fromTableDetails);
+  const otherItems = cartItems.filter(item => !item.fromTableDetails);
+
+  const handleCheckout = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        const userDoc = await firestore().collection('USERS').doc(user.email).get();
+        
+        if (userDoc.exists) {
+          const { username, phone } = userDoc.data();
+          
+          if (!username || !phone) {
+            Alert.alert("Thông báo", "Bạn hãy nhập đầy đủ thông tin để thanh toán");
+            
+            return;
+          }
+
+          const dateTime = new Date();
+
+          const tableItems = cartItems.filter(item => item.fromTableDetails);
+          const otherItems = cartItems.filter(item => !item.fromTableDetails);
+
+          const status = tableItems.length > 0 ? "Chưa nhận phòng" : "Chưa nhận hàng";
+
+          const appointmentData = {
+            dateTime,
+            email: user.email,
+            username,
+            phone,
+            tableItems,
+            otherItems,
+            status,
+            totalPrice,
+          };
+
+          await firestore().collection('Appointments').add(appointmentData);
+          console.log('Dữ liệu cuộc hẹn đã được thêm thành công vào Firestore');
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi thêm dữ liệu cuộc hẹn vào Firestore:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Giỏ Hàng</Text>
-      <View style={styles.selectAllContainer}>
-        <CheckBox
-          disabled={false}
-          value={selectAll}
-          onValueChange={toggleSelectAll}
-          tintColors={{ true: colors.buttons, false: colors.grey3 }}
+      <View style={styles.listContainer}>
+        <FlatList
+          data={tableItems}
+          renderItem={renderCartItem}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
         />
-        <Text style={styles.selectAllText}>Tất cả ({cartItems.length} sản phẩm)</Text>
-        <TouchableOpacity onPress={deleteSelectedItems} style={styles.deleteButton}>
-          <Icon name="delete" size={24} color={colors.grey2} />
-        </TouchableOpacity>
+        <View style={styles.selectAllContainer}>
+          <CheckBox
+            disabled={false}
+            value={selectAll}
+            onValueChange={toggleSelectAll}
+            tintColors={{ true: colors.buttons, false: colors.grey3 }}
+          />
+          <Text style={styles.selectAllText}>Tất cả ({otherItems.length} món ăn)</Text>
+          <TouchableOpacity onPress={deleteSelectedItems} style={styles.deleteButton}>
+            <Icon name="delete" size={24} color={colors.grey2} />
+          </TouchableOpacity>
+        </View>
       </View>
       <FlatList
-        data={cartItems}
+        data={otherItems}
         renderItem={renderCartItem}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         contentContainerStyle={styles.listContainer}
@@ -98,7 +180,7 @@ export default function ShoppingCartScreen() {
         <Text style={styles.totalText}>Tổng tiền:</Text>
         <Text style={styles.totalPrice}>{formatPrice(totalPrice)} VNĐ</Text>
       </View>
-      <TouchableOpacity style={styles.checkoutButton}>
+      <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
         <Text style={styles.checkoutButtonText}>Tiếp tục</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -134,7 +216,6 @@ const styles = StyleSheet.create({
   cartItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
     backgroundColor: colors.white,
     borderRadius: 8,
     padding: 8,
@@ -146,6 +227,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.23,
     shadowRadius: 2.62,
     elevation: 4,
+    marginBottom: 10, // Add margin to separate items
   },
   productImage: {
     width: 80,
@@ -214,5 +296,10 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  dateTimeText: {
+    fontSize: 14,
+    color: colors.grey2,
+    marginBottom: 4,
   },
 });

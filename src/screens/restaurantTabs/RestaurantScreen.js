@@ -5,6 +5,7 @@ import { colors } from '../../global/styles';
 import { Icon } from 'react-native-elements';
 import Menu from '../../components/Menu';
 import { useNavigation } from '@react-navigation/native'; 
+import Table from '../../components/Table'; // Import Table component
 
 const TABS = ['MENU', 'Thông tin', 'Đặt bàn', 'Đánh giá'];
 
@@ -50,7 +51,11 @@ export default function RestaurantScreen({ route }) {
             case 'Thông tin':
                 return <Text>Thông tin content here</Text>;
             case 'Đặt bàn':
-                return <Text>Đặt bàn content here</Text>;
+                return (
+                    <View style={{ flex: 1 }}>
+                        <Table restaurantId={restaurantId} />
+                    </View>
+                );
             case 'Đánh giá':
                 return <Text>Đánh giá content here</Text>;
             default:

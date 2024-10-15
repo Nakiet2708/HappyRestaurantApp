@@ -1,52 +1,96 @@
-import React, { useContext } from 'react'
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native'
-import {Icon, withBadge} from 'react-native-elements'
-import {colors,parameters} from '../global/styles'
-import { useNavigation } from '@react-navigation/native';
-import { useCart } from '../contexts/CartContext'; // Import CartContext
+import React, { useEffect, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
+import { Icon } from 'react-native-elements'
+import { colors, parameters } from '../global/styles'
+import { useNavigation } from '@react-navigation/native'
+import { useCart } from '../contexts/CartContext'
+import firestore from '@react-native-firebase/firestore'
+import auth from '@react-native-firebase/auth'
 
-export default function HomeHeader(){
-    const navigation = useNavigation();
-    const { cartItems } = useCart();
+export default function HomeHeader() {
+    const navigation = useNavigation()
+    const { cartItems } = useCart()
+    const [userImage, setUserImage] = useState('')
 
-    // Tính tổng số lượng sản phẩm
-    const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    const BadgeIcon = withBadge(totalQuantity)(Icon);
+    useEffect(() => {
+        const fetchUserData = async () => {
+            const currentUser = auth().currentUser;
+            if (currentUser) {
+                const userEmail = currentUser.email;
+                const userDoc = await firestore().collection('USERS').doc(userEmail).get();
+                if (userDoc.exists) {
+                    setUserImage(userDoc.data().image);
+                }
+            }
+        }
+
+        fetchUserData()
+    }, [])
+
+    // Số lượng sản phẩm trong giỏ hàng
+    const totalItems = cartItems.length
     
-    return(
-        
+
+    return (
         <View style={styles.header}>
-            
-            <View style={{alignItems:"center", justifyContent:"center", marginLeft:15}}>
-                <Icon 
-                    type = "material-community"
-                    name = "menu"
-                    color = {colors.cardbackground}
-                    size = {32}
+            <View style={{ alignItems: "center", justifyContent: "center", marginLeft: 15 }}>
+                <Image
+                    source={{ uri: userImage || 'https://vivureviews.com/wp-content/uploads/2022/08/avatar-vo-danh-10.png' }}
+                    style={styles.userImage}
                 />
             </View>
-            
-            <View style={{alignItems:"center", justifyContent:"center"}}>
-                <Text style={{color:colors.cardbackground, fontSize:25, fontWeight:'bold'}}>HappyFood</Text>
+
+            <View style={{ alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: colors.cardbackground, fontSize: 25, fontWeight: 'bold' }}>HappyFood</Text>
             </View>
 
             <TouchableOpacity onPress={() => navigation.navigate('ShoppingCart')}>
-                <BadgeIcon 
-                    type="material-community"
-                    name="cart"
-                    size={35}
-                    color={colors.cardbackground}
-                />
+                <View>
+                    <Icon
+                        type="material-community"
+                        name="cart"
+                        size={35}
+                        color={colors.cardbackground}
+                    />
+                    {totalItems > 0 && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{totalItems}</Text>
+                        </View>
+                    )}
+                </View>
             </TouchableOpacity>
         </View>
     )
 }
 
 const styles = StyleSheet.create({
-    header:{
+    header: {
         flexDirection: 'row',
         backgroundColor: colors.buttons,
-        height:parameters.headerHeight,
-        justifyContent:"space-between"
+        height: parameters.headerHeight,
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 15
+    },
+    userImage: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+    },
+    badge: {
+        position: 'absolute',
+        right: -6,
+        top: -3,
+        backgroundColor: 'red',
+        borderRadius: 8,
+        width: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    badgeText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold'
     }
 })

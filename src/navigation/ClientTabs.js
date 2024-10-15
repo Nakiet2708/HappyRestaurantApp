@@ -19,6 +19,8 @@ import SettingScreen from '../screens/accountScreens/SettingScreen';
 import SupportScreen from '../screens/accountScreens/SupportScreen';
 import RestaurantScreen from '../screens/restaurantTabs/RestaurantScreen';
 import ShoppingCartScreen from '../screens/ShoppingCartScreen';
+import TableDetail from '../screens/restaurantTabs/TableDetails';
+import AppointmentDetailScreen from '../screens/AppointmentDetailScreen';
 
 const ClientTab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -44,6 +46,16 @@ function HomeStack() {
       <Stack.Screen name="ProductDetails" component={ProductDetails} />
       <Stack.Screen name="RestaurantScreen" component={RestaurantScreen} />
       <Stack.Screen name="ShoppingCart" component={ShoppingCartScreen} />
+      <Stack.Screen name="TableDetail" component={TableDetail} />
+      
+    </Stack.Navigator>
+  );
+}
+function MyOrderStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Orders" component={MyOrdersScreen} />
+      <Stack.Screen name="AppointmentDetailScreen" component={AppointmentDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -64,7 +76,7 @@ export default function RootClientTabs() {
             iconName = 'home';
           } else if (route.name === 'Search') {
             iconName = 'search';
-          } else if (route.name === 'Orders') {
+          } else if (route.name === 'MyOrderStack') {
             iconName = 'list';
           } else if (route.name === 'AccountStack') {
             iconName = 'person';
@@ -93,8 +105,8 @@ export default function RootClientTabs() {
         }} 
       />
       <ClientTab.Screen 
-        name="Orders" 
-        component={MyOrdersScreen} 
+        name="MyOrderStack" 
+        component={MyOrderStack} 
         options={{ 
           tabBarLabel: 'My Orders',
           headerShown: false 
