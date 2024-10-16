@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView ,Alert} from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import CheckBox from '@react-native-community/checkbox';
 import { colors } from '../global/styles';
 import { useCart } from '../contexts/CartContext';
-import firestore from '@react-native-firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 
 const formatPrice = (price) => {
   return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-};
-
-const formatDate = (date) => {
-  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-};
-
-const formatTime = (date) => {
-  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
 };
 
 export default function ShoppingCartScreen() {
@@ -24,15 +15,14 @@ export default function ShoppingCartScreen() {
   const [subtotal, setSubtotal] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
   const [selectAll, setSelectAll] = useState(false);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
-    const total = subtotal; // Tổng tiền hiện tại không có giảm giá
-
+    const total = subtotal;
     setSubtotal(subtotal);
     setTotalPrice(total);
   }, [cartItems]);
-
 
   const toggleSelectAll = () => {
     const newSelectAll = !selectAll;
@@ -77,7 +67,7 @@ export default function ShoppingCartScreen() {
         </Text>
         {item.fromTableDetails && (
           <Text style={styles.dateTimeText}>
-            {`${item.timeSlot} ${item.date}`} {/* Sử dụng ngày đã định dạng */}
+            {`${item.timeSlot} ${item.date}`}
           </Text>
         )}
         <View style={styles.priceQuantityContainer}>
@@ -94,50 +84,8 @@ export default function ShoppingCartScreen() {
     </View>
   );
 
-  const tableItems = cartItems.filter(item => item.fromTableDetails);
-  const otherItems = cartItems.filter(item => !item.fromTableDetails);
-
-  const handleCheckout = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        const userDoc = await firestore().collection('USERS').doc(user.email).get();
-        
-        if (userDoc.exists) {
-          const { username, phone } = userDoc.data();
-          
-          if (!username || !phone) {
-            Alert.alert("Thông báo", "Bạn hãy nhập đầy đủ thông tin để thanh toán");
-            
-            return;
-          }
-
-          const dateTime = new Date();
-
-          const tableItems = cartItems.filter(item => item.fromTableDetails);
-          const otherItems = cartItems.filter(item => !item.fromTableDetails);
-
-          const status = tableItems.length > 0 ? "Chưa nhận phòng" : "Chưa nhận hàng";
-
-          const appointmentData = {
-            dateTime,
-            email: user.email,
-            username,
-            phone,
-            tableItems,
-            otherItems,
-            status,
-            totalPrice,
-          };
-
-          await firestore().collection('Appointments').add(appointmentData);
-          console.log('Dữ liệu cuộc hẹn đã được thêm thành công vào Firestore');
-        }
-      }
-    } catch (error) {
-      console.error('Lỗi khi thêm dữ liệu cuộc hẹn vào Firestore:', error);
-    }
+  const handleCheckout = () => {
+    navigation.navigate('PaymentOptions', { totalPrice });
   };
 
   return (
@@ -145,7 +93,7 @@ export default function ShoppingCartScreen() {
       <Text style={styles.title}>Giỏ Hàng</Text>
       <View style={styles.listContainer}>
         <FlatList
-          data={tableItems}
+          data={cartItems.filter(item => item.fromTableDetails)}
           renderItem={renderCartItem}
           keyExtractor={(item, index) => `${item.id}-${index}`}
         />
@@ -156,14 +104,14 @@ export default function ShoppingCartScreen() {
             onValueChange={toggleSelectAll}
             tintColors={{ true: colors.buttons, false: colors.grey3 }}
           />
-          <Text style={styles.selectAllText}>Tất cả ({otherItems.length} món ăn)</Text>
+          <Text style={styles.selectAllText}>Tất cả ({cartItems.length} món ăn)</Text>
           <TouchableOpacity onPress={deleteSelectedItems} style={styles.deleteButton}>
             <Icon name="delete" size={24} color={colors.grey2} />
           </TouchableOpacity>
         </View>
       </View>
       <FlatList
-        data={otherItems}
+        data={cartItems.filter(item => !item.fromTableDetails)}
         renderItem={renderCartItem}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         contentContainerStyle={styles.listContainer}

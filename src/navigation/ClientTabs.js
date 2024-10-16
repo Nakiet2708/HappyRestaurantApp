@@ -21,6 +21,7 @@ import RestaurantScreen from '../screens/restaurantTabs/RestaurantScreen';
 import ShoppingCartScreen from '../screens/ShoppingCartScreen';
 import TableDetail from '../screens/restaurantTabs/TableDetails';
 import AppointmentDetailScreen from '../screens/AppointmentDetailScreen';
+import PaymentOptionsScreen from '../screens/PaymentOptionsScreen';
 
 const ClientTab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -47,7 +48,7 @@ function HomeStack() {
       <Stack.Screen name="RestaurantScreen" component={RestaurantScreen} />
       <Stack.Screen name="ShoppingCart" component={ShoppingCartScreen} />
       <Stack.Screen name="TableDetail" component={TableDetail} />
-      
+      <Stack.Screen name="PaymentOptions" component={PaymentOptionsScreen} />
     </Stack.Navigator>
   );
 }
